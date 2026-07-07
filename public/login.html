@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>La Brasería — Acceso</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0e0f11;
+      --card:     #16181c;
+      --border:   rgba(255,255,255,0.07);
+      --amber:    #f5c842;
+      --amber-d:  #b8920a;
+      --text:     #e8e9eb;
+      --muted:    #7a7f8a;
+      --error:    #c0392b;
+      --radius:   12px;
+    }
+
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: var(--text);
+    }
+
+    .login-card {
+      background: var(--card);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2.5rem 2rem;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 0.4rem;
+    }
+
+    .brand-icon {
+      width: 40px; height: 40px;
+      background: rgba(245,200,66,0.12);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; color: var(--amber);
+    }
+
+    .brand-name { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+    .brand-sub  { font-size: 12px; color: var(--muted); margin-bottom: 2rem; margin-left: 50px; }
+
+    label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      margin-top: 16px;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px 12px;
+      background: rgba(255,255,255,0.04);
+      border: 0.5px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    input:focus { border-color: var(--amber); }
+
+    .input-wrap { position: relative; }
+    .toggle-pw {
+      position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); font-size: 15px; padding: 4px;
+    }
+    .toggle-pw:hover { color: var(--text); }
+
+    .btn-login {
+      width: 100%;
+      margin-top: 24px;
+      padding: 12px;
+      background: var(--amber);
+      color: #1a1208;
+      font-weight: 700;
+      font-size: 14px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-login:hover { opacity: 0.88; }
+    .btn-login:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .error-msg {
+      margin-top: 14px;
+      padding: 10px 12px;
+      background: rgba(192,57,43,0.12);
+      color: #e74c3c;
+      border-radius: 8px;
+      font-size: 13px;
+      display: none;
+    }
+    .error-msg.show { display: block; }
+
+    .hints {
+      margin-top: 24px;
+      padding-top: 18px;
+      border-top: 0.5px solid var(--border);
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .hints strong { color: rgba(255,255,255,0.4); }
+
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(26,18,8,0.3);
+      border-top-color: #1a1208;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<div class="login-card">
+  <div class="brand">
+    <div class="brand-icon"><i class="ti ti-chef-hat"></i></div>
+    <span class="brand-name">La Brasería</span>
+  </div>
+  <div class="brand-sub">Panel de gestión — Acceso privado</div>
+
+  <label for="usuario">Usuario</label>
+  <input id="usuario" type="text" placeholder="tu usuario" autocomplete="username" />
+
+  <label for="password">Contraseña</label>
+  <div class="input-wrap">
+    <input id="password" type="password" placeholder="••••••••" autocomplete="current-password" />
+    <button class="toggle-pw" id="toggle-pw" type="button" aria-label="Mostrar contraseña">
+      <i class="ti ti-eye"></i>
+    </button>
+  </div>
+
+  <button class="btn-login" id="btn-login">
+    <div class="spinner" id="spinner"></div>
+    <span id="btn-text">Entrar</span>
+  </button>
+
+  <div class="error-msg" id="error-msg"></div>
+
+  <div class="hints">
+    <strong>Accesos de demo:</strong><br>
+    admin / admin123 &nbsp;·&nbsp; carlos / sala456 &nbsp;·&nbsp; pedro / cocina789
+  </div>
+</div>
+
+<script>
+  const $ = id => document.getElementById(id);
+
+  // Toggle contraseña
+  $('toggle-pw').addEventListener('click', () => {
+    const input = $('password');
+    const icon  = $('toggle-pw').querySelector('i');
+    if (input.type === 'password') {
+      input.type = 'text';
+      icon.className = 'ti ti-eye-off';
+    } else {
+      input.type = 'password';
+      icon.className = 'ti ti-eye';
+    }
+  });
+
+  // Submit con Enter
+  [$('usuario'), $('password')].forEach(el => {
+    el.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+  });
+
+  $('btn-login').addEventListener('click', login);
+
+  async function login() {
+    const usuario  = $('usuario').value.trim();
+    const password = $('password').value;
+    const errEl    = $('error-msg');
+    errEl.classList.remove('show');
+
+    if (!usuario || !password) {
+      errEl.textContent = 'Introduce usuario y contraseña';
+      errEl.classList.add('show');
+      return;
+    }
+
+    $('btn-login').disabled = true;
+    $('spinner').style.display = 'block';
+    $('btn-text').textContent = 'Accediendo…';
+                
+    try {
+      const res  = await fetch('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuario, password }),
+      });
+      const json = await res.json();
+
+      if (!json.ok) throw new Error(json.error || 'Error de autenticación');
+
+      // Guardar sesión
+      sessionStorage.setItem('braseria_token',   json.data.token);
+      sessionStorage.setItem('braseria_usuario',  JSON.stringify(json.data.usuario));
+      sessionStorage.setItem('braseria_permisos', JSON.stringify(json.data.permisos));
+
+      window.location.href = '/';
+    } catch (e) {
+      errEl.textContent = e.message;
+      errEl.classList.add('show');
+      $('btn-login').disabled = false;
+      $('spinner').style.display = 'none';
+      $('btn-text').textContent = 'Entrar';
+      $('password').value = '';
+      $('password').focus();
+    }
+  }
+
+  // Si ya tiene token válido, redirigir directamente
+  const token = sessionStorage.getItem('braseria_token');
+  if (token) {
+    fetch('/auth/me', { headers: { Authorization: 'Bearer ' + token } })
+      .then(r => r.json())
+      .then(j => { if (j.ok) window.location.href = '/'; })
+      .catch(() => {});
+  }
+</script>
+</body>
+</html>

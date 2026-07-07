@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>La Brasería — Panel de gestión</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
+  <link rel="stylesheet" href="/css/styles.css" />
+  <script>
+    (function () {
+      var saved = localStorage.getItem('braseria-theme');
+      var theme = saved === 'light' || saved === 'dark' ? saved : 'light';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+  <style>
+    /* ── Auth additions ────────────────────────────────────────── */
+    .user-badge {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.04);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s;
+      position: relative;
+    }
+    .user-badge:hover { background: rgba(255,255,255,0.07); }
+
+    .user-avatar {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: rgba(245,200,66,0.15);
+      color: var(--amber);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+    }
+    .user-info { line-height: 1.3; }
+    .user-name { font-size: 12px; font-weight: 600; }
+    .user-role {
+      font-size: 10px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .user-role.r-admin  { color: #f5c842; }
+    .user-role.r-sala   { color: #378add; }
+    .user-role.r-cocina { color: #5dc8a5; }
+
+    .user-menu {
+      position: absolute; top: calc(100% + 8px); right: 0;
+      background: var(--bg-primary);
+      border: 0.5px solid var(--border-md);
+      border-radius: var(--radius-md);
+      padding: 6px;
+      min-width: 180px;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+      display: none; z-index: 200;
+    }
+    .user-menu.open { display: block; }
+    .menu-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 10px;
+      font-size: 13px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+    .menu-item:hover { background: rgba(255,255,255,0.06); }
+    .menu-item.danger { color: #e74c3c; }
+    .menu-item i { font-size: 15px; color: var(--text-secondary); }
+    .menu-item.danger i { color: #e74c3c; }
+    .menu-sep { height: 0.5px; background: var(--border); margin: 4px 0; }
+
+    /* Sidebar items deshabilitados por rol */
+    .nav-item.disabled {
+      opacity: 0.3;
+      pointer-events: none;
+      cursor: default;
+    }
+
+    /* Modal usuarios admin */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 500;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .modal-box {
+      background: var(--bg-primary);
+      border: 0.5px solid var(--border-md);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      width: 90%; max-width: 540px;
+      max-height: 90vh; overflow-y: auto;
+    }
+    .modal-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 1.2rem;
+    }
+    .modal-title { font-size: 15px; font-weight: 600; }
+    .modal-close {
+      background: none; border: none; cursor: pointer;
+      font-size: 20px; color: var(--text-secondary);
+    }
+    .user-row {
+      display: grid; grid-template-columns: 1fr auto auto;
+      align-items: center; gap: 12px;
+      padding: 10px 0;
+      border-bottom: 0.5px solid var(--border);
+    }
+    .user-row:last-child { border-bottom: none; }
+    .user-row-info .name { font-size: 13px; font-weight: 500; }
+    .user-row-info .meta { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+    .rol-pill {
+      font-size: 10px; font-weight: 600; letter-spacing: 0.5px;
+      padding: 3px 8px; border-radius: 20px; text-transform: uppercase;
+    }
+    .rol-pill.admin  { background: rgba(245,200,66,0.14); color: #f5c842; }
+    .rol-pill.sala   { background: rgba(55,138,221,0.14); color: #378add; }
+    .rol-pill.cocina { background: rgba(93,200,165,0.14); color: #5dc8a5; }
+    .btn-sm {
+      padding: 5px 10px; font-size: 11px; border-radius: 6px;
+      border: 0.5px solid var(--border-md); background: none;
+      color: var(--text-secondary); cursor: pointer;
+    }
+    .btn-sm:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); }
+    .btn-sm.danger:hover { color: #e74c3c; border-color: rgba(231,76,60,0.3); }
+    .form-row { margin-top: 12px; }
+    .form-row label { font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 4px; }
+    .form-row input, .form-row select {
+      width: 100%; padding: 8px 10px;
+      background: var(--bg-secondary); border: 0.5px solid var(--border-md);
+      border-radius: 8px; color: var(--text-primary); font-size: 13px;
+    }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .btn-primary {
+      margin-top: 16px; width: 100%; padding: 10px;
+      background: var(--amber); color: #1a1208;
+      font-weight: 700; font-size: 13px; border: none;
+      border-radius: 8px; cursor: pointer;
+    }
+    .btn-primary:hover { opacity: 0.88; }
+    .section-title {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+      color: var(--text-secondary); margin: 1.2rem 0 0.8rem;
+    }
+
+    /* ── Informes ──────────────────────────────────────────────── */
+    .inf-range-btn {
+      padding: 7px 14px; font-size: 12px; font-weight: 600;
+      background: var(--bg-secondary); border: 0.5px solid var(--border-md);
+      border-radius: 8px; color: var(--text-secondary); cursor: pointer;
+      transition: all 0.15s;
+    }
+    .inf-range-btn.active,
+    .inf-range-btn:hover { background: var(--amber); color: #1a1208; border-color: transparent; }
+
+    .inf-bar-wrap { display: flex; align-items: flex-end; gap: 6px; height: 160px; overflow-x: auto; overflow-y: hidden; }
+    .inf-bar-col  { flex: 1 0 28px; min-width: 28px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; height: 160px; }
+    .inf-bar      {
+      width: 100%; border-radius: 4px 4px 0 0;
+      background: var(--amber); opacity: 0.85;
+      transition: opacity 0.15s;
+      min-height: 4px;
+    }
+    .inf-bar:hover { opacity: 1; }
+    .inf-bar-label { font-size: 10px; color: var(--text-secondary); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+    .inf-bar-val   { font-size: 10px; color: var(--amber); font-weight: 600; }
+
+    .inf-cat-row { display: flex; align-items: center; gap: 10px; padding: 8px 1rem; border-bottom: 0.5px solid var(--border); }
+    .inf-cat-row:last-child { border-bottom: none; }
+    .inf-cat-name { font-size: 13px; min-width: 100px; }
+    .inf-cat-bar-wrap { flex: 1; height: 8px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }
+    .inf-cat-bar  { height: 100%; border-radius: 4px; background: var(--amber); transition: width 0.4s; }
+    .inf-cat-val  { font-size: 12px; font-weight: 600; min-width: 70px; text-align: right; }
+
+    .inf-prod-row { display: flex; align-items: center; gap: 10px; padding: 10px 1rem; border-bottom: 0.5px solid var(--border); }
+    .inf-prod-row:last-child { border-bottom: none; }
+    .inf-prod-rank { font-size: 11px; font-weight: 700; color: var(--text-secondary); min-width: 20px; }
+    .inf-prod-name { flex: 1; font-size: 13px; }
+    .inf-prod-units{ font-size: 11px; color: var(--text-secondary); }
+    .inf-prod-val  { font-size: 13px; font-weight: 600; }
+
+    /* ── Impresión ticket ───────────────────────────────────────── */
+    @media print {
+      body * { visibility: hidden; }
+      #ticket-print, #ticket-print * { visibility: visible; }
+      #ticket-print { position: fixed; top: 0; left: 0; width: 80mm; font-family: monospace; }
+    }
+    #ticket-print {
+      display: none;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      width: 300px;
+      background: white;
+      color: black;
+      padding: 16px;
+    }
+
+    /* Modal ticket */
+    .ticket-modal {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+      z-index: 600; display: flex; align-items: center; justify-content: center;
+    }
+    .ticket-box {
+      background: white; color: #111;
+      width: 320px; border-radius: 8px; overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    .ticket-actions {
+      display: flex; gap: 8px; padding: 12px;
+      background: #f5f5f5; border-top: 1px solid #ddd;
+    }
+    .ticket-actions button {
+      flex: 1; padding: 9px; border: none; border-radius: 6px;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+    .ticket-actions .btn-print { background: #1a1a1a; color: white; }
+    .ticket-actions .btn-cerrar { background: #e5e5e5; color: #333; }
+    .ticket-inner {
+      padding: 20px 16px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px; line-height: 1.6;
+    }
+    .ticket-inner h2 { font-size: 15px; text-align: center; margin: 0 0 4px; }
+    .ticket-inner .t-sub { text-align: center; font-size: 11px; color: #555; margin-bottom: 12px; }
+    .ticket-inner hr { border: none; border-top: 1px dashed #aaa; margin: 8px 0; }
+    .ticket-inner .t-linea { display: flex; justify-content: space-between; gap: 8px; }
+    .ticket-inner .t-linea .t-prod { flex: 1; }
+    .ticket-inner .t-total { display: flex; justify-content: space-between; font-weight: bold; font-size: 14px; margin-top: 4px; }
+    .ticket-inner .t-footer { text-align: center; font-size: 10px; color: #777; margin-top: 12px; }
+
+  </style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar" role="navigation" aria-label="Menú principal">
+    <div class="sidebar-brand">
+      <div class="logo"><i class="ti ti-chef-hat"></i> La Brasería</div>
+      <div class="sub">Panel de gestión</div>
+    </div>
+
+    <span class="nav-section-label">Principal</span>
+    <div class="nav-item active" data-perm="dashboard" data-view="resumen"><i class="ti ti-layout-dashboard"></i> Resumen</div>
+    <div class="nav-item" data-perm="mesas" data-view="mesas"><i class="ti ti-armchair"></i> Mesas</div>
+    <div class="nav-item" data-perm="pedidos" data-view="pedidos"><i class="ti ti-receipt"></i> Pedidos</div>
+    <div class="nav-item" data-perm="cocina" data-view="cocina"><i class="ti ti-tools-kitchen-2"></i> Cocina</div>
+
+    <span class="nav-section-label">Gestión</span>
+    <div class="nav-item" data-perm="carta" data-view="carta"><i class="ti ti-book"></i> Carta</div>
+    <div class="nav-item" data-perm="personal" data-view="personal"><i class="ti ti-users"></i> Personal</div>
+    <div class="nav-item" data-perm="reservas" data-view="reservas"><i class="ti ti-calendar"></i> Reservas</div>
+    <div class="nav-item" data-perm="ventas" data-view="ventas"><i class="ti ti-chart-bar"></i> Informes</div>
+
+    <span class="nav-section-label">Sistema</span>
+    <div class="nav-item" data-perm="config" data-view="config" id="nav-config"><i class="ti ti-settings"></i> Configuración</div>
+
+    <div class="sidebar-footer">
+      <div class="status-dot"></div>
+      <span class="status-label">Servicio activo</span>
+    </div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <main class="main">
+
+    <div class="topbar">
+      <div>
+        <h1 id="page-title">Resumen del día</h1>
+        <div class="date" id="fecha">—</div>
+      </div>
+      <div class="topbar-right">
+        <div class="ticker" aria-live="polite" aria-label="Notificaciones en vivo">
+          <div class="ticker-dot"></div>
+          <div class="ticker-text" id="ticker-msg">Conectando…</div>
+        </div>
+        <span class="badge-live">En vivo</span>
+        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Cambiar tema" title="Cambiar tema claro/oscuro">
+          <i class="ti ti-sun icon-light"></i>
+          <i class="ti ti-moon icon-dark"></i>
+        </button>
+
+        <!-- User badge -->
+        <div class="user-badge" id="user-badge">
+          <div class="user-avatar" id="user-avatar">--</div>
+          <div class="user-info">
+            <div class="user-name" id="user-name">—</div>
+            <div class="user-role" id="user-role">—</div>
+          </div>
+          <i class="ti ti-chevron-down" style="font-size:13px;color:var(--text-secondary)"></i>
+
+          <div class="user-menu" id="user-menu">
+            <div class="menu-item" id="menu-usuarios" style="display:none">
+              <i class="ti ti-users"></i> Gestionar usuarios
+            </div>
+            <div class="menu-sep" id="menu-sep" style="display:none"></div>
+            <div class="menu-item" id="menu-perfil">
+              <i class="ti ti-user"></i> Mi perfil
+            </div>
+            <div class="menu-sep"></div>
+            <div class="menu-item danger" id="menu-logout">
+              <i class="ti ti-logout"></i> Cerrar sesión
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══════════ VISTA: RESUMEN ══════════ -->
+    <section class="view" id="view-resumen">
+
+    <!-- Métricas -->
+    <div class="metrics" role="region" aria-label="Métricas del día">
+      <div class="metric-card">
+        <div class="metric-label">Facturación hoy</div>
+        <div class="metric-value" id="metric-facturacion">—</div>
+        <div class="metric-delta up"><i class="ti ti-trending-up" style="font-size:12px"></i> +12% vs ayer</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Cubiertos</div>
+        <div class="metric-value" id="metric-cubiertos">—</div>
+        <div class="metric-delta up"><i class="ti ti-trending-up" style="font-size:12px"></i> +8 vs ayer</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Ticket medio</div>
+        <div class="metric-value" id="metric-ticket">—</div>
+        <div class="metric-delta up"><i class="ti ti-trending-up" style="font-size:12px"></i> +3,5% vs ayer</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Tiempo de espera</div>
+        <div class="metric-value" id="metric-espera">—</div>
+        <div class="metric-delta down"><i class="ti ti-trending-down" style="font-size:12px"></i> +4 min vs media</div>
+      </div>
+    </div>
+
+    <!-- Mesas + Pedidos -->
+    <div class="grid-2">
+      <div class="card" role="region" aria-label="Estado de mesas">
+        <div class="card-header">
+          <span class="card-title"><i class="ti ti-armchair"></i> Estado de mesas</span>
+          <span class="card-link" id="link-ver-plano">Ver plano</span>
+        </div>
+        <div class="tables-grid" id="tables-grid"></div>
+        <div class="table-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#3a9c5b"></div><span id="legend-libre">Libre</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:#f5c842"></div><span id="legend-ocupada">Ocupada</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:#378add"></div><span id="legend-reservada">Reservada</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:#c0392b"></div><span id="legend-pendiente">Cuenta</span></div>
+        </div>
+      </div>
+
+      <div class="card" role="region" aria-label="Pedidos activos">
+        <div class="card-header">
+          <span class="card-title"><i class="ti ti-receipt"></i> Pedidos activos</span>
+          <span class="card-link" id="link-ver-pedidos">Ver todos</span>
+        </div>
+        <div class="orders-list" id="orders-list"></div>
+      </div>
+    </div>
+
+    <!-- Ventas + Personal -->
+    <div class="grid-2">
+      <div class="card" role="region" aria-label="Ventas por categoría">
+        <div class="card-header">
+          <span class="card-title"><i class="ti ti-chart-bar"></i> Ventas por categoría</span>
+        </div>
+        <div class="chart-wrap" id="chart-wrap"></div>
+      </div>
+
+      <div class="card" role="region" aria-label="Personal en turno">
+        <div class="card-header">
+          <span class="card-title"><i class="ti ti-users"></i> Personal en turno</span>
+          <span class="card-link">Gestionar</span>
+        </div>
+        <div class="staff-list" id="staff-list"></div>
+      </div>
+    </div>
+
+    </section>
+    <!-- ══════════ /VISTA: RESUMEN ══════════ -->
+
+    <!-- ══════════ VISTA: MESAS (plano interactivo) ══════════ -->
+    <section class="view" id="view-mesas" hidden>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title"><i class="ti ti-layout-2"></i> Plano del restaurante</span>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div class="floorplan-filters" id="floorplan-filters">
+            <button class="ff-btn active" data-filtro="todas">Todas</button>
+            <button class="ff-btn" data-filtro="libre">Libres</button>
+            <button class="ff-btn" data-filtro="ocupada">Ocupadas</button>
+            <button class="ff-btn" data-filtro="reservada">Reservadas</button>
+            <button class="ff-btn" data-filtro="pendiente">Cuenta</button>
+          </div>
+            <button id="btn-nueva-mesa" style="display:none; align-items:center; gap:5px; padding:7px 14px; background:var(--amber); color:#1a1208; font-weight:700; font-size:12px; border:none; border-radius:8px; cursor:pointer;">
+              <i class="ti ti-plus"></i> Nueva mesa
+            </button>
+          </div>
+        </div>
+
+        <div class="floorplan-wrap" id="floorplan-wrap">
+          <div class="floorplan-zone" style="left:1.5%; top:4%; width:38%; height:40%;">
+            <span class="floorplan-zone-label">Terraza</span>
+          </div>
+          <div class="floorplan-zone" style="left:42%; top:4%; width:56.5%; height:62%;">
+            <span class="floorplan-zone-label">Salón principal</span>
+          </div>
+          <div class="floorplan-zone" style="left:1.5%; top:48%; width:38%; height:48%;">
+            <span class="floorplan-zone-label">Reservados</span>
+          </div>
+          <div class="floorplan-zone" style="left:42%; top:70%; width:56.5%; height:26%;">
+            <span class="floorplan-zone-label">Junto a barra</span>
+          </div>
+          <div class="floorplan-bar">Barra</div>
+          <div id="floorplan-nodes"></div>
+        </div>
+
+        <div class="table-legend" style="margin-top:1rem">
+          <div class="legend-item"><div class="legend-dot" style="background:#3a9c5b"></div><span id="fp-legend-libre">Libre</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:#f5c842"></div><span id="fp-legend-ocupada">Ocupada</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:#378add"></div><span id="fp-legend-reservada">Reservada</span></div>
+          <div class="legend-item"><div class="legend-dot" style="background:#c0392b"></div><span id="fp-legend-pendiente">Cuenta</span></div>
+        </div>
+      </div>
+
+    </section>
+    <!-- ══════════ /VISTA: MESAS ══════════ -->
+
+    <!-- ══════════ VISTA: PEDIDOS (kanban) ══════════ -->
+    <section class="view" id="view-pedidos" hidden>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title"><i class="ti ti-receipt"></i> Pedidos activos</span>
+          <button class="btn-sm" id="btn-nuevo-pedido" style="display:flex;align-items:center;gap:5px;">
+            <i class="ti ti-plus"></i> Nuevo pedido
+          </button>
+        </div>
+        <div class="kanban-board" id="kanban-board">
+          <div class="kanban-col" data-estado="cocina">
+            <div class="kanban-col-header"><span class="dot s-cocina-dot"></span> En cocina <span class="kanban-count" id="kc-cocina">0</span></div>
+            <div class="kanban-list" id="kanban-cocina"></div>
+          </div>
+          <div class="kanban-col" data-estado="servir">
+            <div class="kanban-col-header"><span class="dot s-servir-dot"></span> Para servir <span class="kanban-count" id="kc-servir">0</span></div>
+            <div class="kanban-list" id="kanban-servir"></div>
+          </div>
+          <div class="kanban-col" data-estado="cobrar">
+            <div class="kanban-col-header"><span class="dot s-cobrar-dot"></span> Cobrar <span class="kanban-count" id="kc-cobrar">0</span></div>
+            <div class="kanban-list" id="kanban-cobrar"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- ══════════ /VISTA: PEDIDOS ══════════ -->
+
+    <!-- ══════════ VISTA: COCINA (tickets) ══════════ -->
+    <section class="view" id="view-cocina" hidden>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title"><i class="ti ti-tools-kitchen-2"></i> Comandas de cocina</span>
+          <span class="card-link" id="cocina-refrescar"><i class="ti ti-refresh"></i> Refrescar</span>
+        </div>
+        <div class="kitchen-board" id="kitchen-board"></div>
+      </div>
+    </section>
+    <!-- ══════════ /VISTA: COCINA ══════════ -->
+
+    <!-- ══════════ VISTA: CARTA ══════════ -->
+    <section class="view" id="view-carta" hidden>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title"><i class="ti ti-book"></i> Carta del restaurante</span>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div class="floorplan-filters" id="carta-filtros">
+              <button class="ff-btn active" data-filtro-cat="todas">Todas</button>
+            </div>
+            <button class="btn-sm" id="btn-nuevo-plato" style="display:flex;align-items:center;gap:5px;">
+              <i class="ti ti-plus"></i> Nuevo plato
+            </button>
+          </div>
+        </div>
+        <div id="carta-board"></div>
+      </div>
+    </section>
+    <!-- ══════════ /VISTA: CARTA ══════════ -->
+
+    <!-- ══════════ VISTA: PLACEHOLDER ══════════ -->
+    <!-- ══════════ VISTA: INFORMES / VENTAS ══════════ -->
+    <section class="view" id="view-ventas" hidden>
+
+      <!-- Selector de rango -->
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.2rem; flex-wrap:wrap; gap:10px;">
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <button class="inf-range-btn active" data-days="7">7 días</button>
+          <button class="inf-range-btn" data-days="14">14 días</button>
+          <button class="inf-range-btn" data-days="30">30 días</button>
+          <span style="color:var(--text-secondary); font-size:12px; margin: 0 4px;">o</span>
+          <input type="date" id="inf-desde" style="padding:7px 10px; background:var(--bg-secondary); border:0.5px solid var(--border-md); border-radius:8px; color:var(--text-primary); font-size:13px;">
+          <span style="color:var(--text-secondary); font-size:12px;">→</span>
+          <input type="date" id="inf-hasta" style="padding:7px 10px; background:var(--bg-secondary); border:0.5px solid var(--border-md); border-radius:8px; color:var(--text-primary); font-size:13px;">
+          <button id="inf-btn-aplicar" style="padding:7px 14px; background:var(--amber); color:#1a1208; font-weight:700; border:none; border-radius:8px; font-size:12px; cursor:pointer;">Aplicar</button>
+        </div>
+        <span id="inf-periodo-label" style="font-size:12px; color:var(--text-secondary);"></span>
+      </div>
+
+      <!-- KPIs del período -->
+      <div class="metrics" id="inf-kpis" style="margin-bottom:1.2rem;"></div>
+
+      <!-- Gráfica por día + Top productos -->
+      <div class="grid-2" style="margin-bottom:1.2rem;">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title"><i class="ti ti-chart-line"></i> Facturación por día</span>
+          </div>
+          <div id="inf-chart-dia" style="padding: 1rem 0.5rem; min-height:180px;"></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title"><i class="ti ti-trophy"></i> Top 5 productos</span>
+          </div>
+          <div id="inf-top-productos" style="padding:0.5rem 0; min-height:180px;"></div>
+        </div>
+      </div>
+
+      <!-- Ventas por categoría -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title"><i class="ti ti-chart-bar"></i> Ventas por categoría</span>
+        </div>
+        <div id="inf-chart-cat" style="padding:1rem 0.5rem; min-height:120px;"></div>
+      </div>
+
+    </section>
+    <!-- ══════════ /VISTA: INFORMES ══════════ -->
+
+    <section class="view" id="view-config" hidden>
+      <style>
+        .cfg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; }
+        .cfg-section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary); margin: 0.4rem 0 0.8rem; font-weight: 600; }
+        .cfg-field { margin-bottom: 14px; }
+        .cfg-field label { font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 4px; }
+        .cfg-field input, .cfg-field select {
+          width: 100%; padding: 8px 10px;
+          background: var(--bg-secondary); border: 0.5px solid var(--border-md);
+          border-radius: 8px; color: var(--text-primary); font-size: 13px;
+          transition: border-color 0.15s;
+        }
+        .cfg-field input:focus, .cfg-field select:focus { outline: none; border-color: var(--amber); }
+        .cfg-field .cfg-hint { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+        .cfg-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .cfg-save-bar {
+          display: flex; align-items: center; justify-content: flex-end; gap: 12px;
+          margin-top: 1.5rem; padding-top: 1rem; border-top: 0.5px solid var(--border);
+        }
+        .cfg-save-msg { font-size: 12px; color: var(--green); opacity: 0; transition: opacity 0.3s; }
+        .cfg-save-msg.visible { opacity: 1; }
+        .btn-cfg-save {
+          padding: 9px 20px; background: var(--amber); color: #1a1208;
+          font-weight: 700; font-size: 13px; border: none; border-radius: 8px; cursor: pointer;
+          transition: opacity 0.15s;
+        }
+        .btn-cfg-save:hover { opacity: 0.85; }
+        .btn-cfg-save:disabled { opacity: 0.5; cursor: not-allowed; }
+      </style>
+
+      <div class="cfg-grid">
+
+        <!-- Datos del restaurante -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title"><i class="ti ti-building-store"></i> Datos del restaurante</span>
+          </div>
+          <p class="cfg-section-title">Información general</p>
+          <div class="cfg-field">
+            <label>Nombre del restaurante</label>
+            <input id="cfg-nombre_restaurante" type="text" />
+          </div>
+          <div class="cfg-field">
+            <label>Dirección</label>
+            <input id="cfg-direccion" type="text" />
+          </div>
+          <div class="cfg-row-2">
+            <div class="cfg-field">
+              <label>Teléfono</label>
+              <input id="cfg-telefono" type="tel" />
+            </div>
+            <div class="cfg-field">
+              <label>CIF / NIF</label>
+              <input id="cfg-cif" type="text" />
+            </div>
+          </div>
+          <div class="cfg-field">
+            <label>Email de contacto</label>
+            <input id="cfg-email" type="email" />
+          </div>
+        </div>
+
+        <!-- Horarios y capacidad -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title"><i class="ti ti-clock"></i> Horarios y capacidad</span>
+          </div>
+          <p class="cfg-section-title">Horario de servicio</p>
+          <div class="cfg-row-2">
+            <div class="cfg-field">
+              <label>Apertura</label>
+              <input id="cfg-horario_apertura" type="time" />
+            </div>
+            <div class="cfg-field">
+              <label>Cierre</label>
+              <input id="cfg-horario_cierre" type="time" />
+            </div>
+          </div>
+          <div class="cfg-field">
+            <label>Capacidad máxima (comensales)</label>
+            <input id="cfg-capacidad_max" type="number" min="1" max="999" />
+          </div>
+          <p class="cfg-section-title" style="margin-top:1rem">Cocina</p>
+          <div class="cfg-field">
+            <label>Aviso tiempo de espera (minutos)</label>
+            <input id="cfg-aviso_cocina_min" type="number" min="1" max="120" />
+            <span class="cfg-hint">Se resaltarán los pedidos que superen este tiempo en cocina.</span>
+          </div>
+        </div>
+
+        <!-- Facturación -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title"><i class="ti ti-receipt-2"></i> Facturación</span>
+          </div>
+          <p class="cfg-section-title">Impuestos y moneda</p>
+          <div class="cfg-row-2">
+            <div class="cfg-field">
+              <label>IVA aplicado (%)</label>
+              <input id="cfg-iva" type="number" min="0" max="100" step="0.1" />
+            </div>
+            <div class="cfg-field">
+              <label>Moneda</label>
+              <select id="cfg-moneda">
+                <option value="EUR">EUR — Euro (€)</option>
+                <option value="USD">USD — Dólar ($)</option>
+                <option value="GBP">GBP — Libra (£)</option>
+                <option value="MXN">MXN — Peso mexicano</option>
+                <option value="COP">COP — Peso colombiano</option>
+              </select>
+            </div>
+          </div>
+          <div class="cfg-field" style="margin-top:0.5rem">
+            <label>Mensaje al pie del ticket</label>
+            <input id="cfg-ticket_pie" type="text" maxlength="120" />
+            <span class="cfg-hint">Aparece al final de cada ticket impreso.</span>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="cfg-save-bar">
+        <span class="cfg-save-msg" id="cfg-save-msg"><i class="ti ti-check"></i> Guardado correctamente</span>
+        <button class="btn-cfg-save" id="btn-cfg-save">Guardar cambios</button>
+      </div>
+    </section>
+
+    <!-- ══════════ VISTA: RESERVAS ══════════ -->
+    <section class="view" id="view-reservas" hidden>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.2rem;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <input type="date" id="reservas-fecha" style="padding:7px 10px; background:var(--bg-secondary); border:0.5px solid var(--border-md); border-radius:8px; color:var(--text-primary); font-size:13px;">
+          <button id="btn-reservas-futuras" style="padding:7px 14px; background:var(--bg-secondary); border:0.5px solid var(--border-md); border-radius:8px; color:var(--text-secondary); font-size:12px; cursor:pointer;">Ver todas</button>
+        </div>
+        <button id="btn-nueva-reserva" style="display:flex; align-items:center; gap:6px; padding:8px 16px; background:var(--amber); color:#1a1208; font-weight:700; font-size:13px; border:none; border-radius:8px; cursor:pointer;">
+          <i class="ti ti-plus"></i> Nueva reserva
+        </button>
+      </div>
+      <div class="card" style="padding:0; overflow:hidden;">
+        <div id="reservas-lista" style="min-height:120px;"></div>
+      </div>
+    </section>
+    <!-- ══════════ /VISTA: RESERVAS ══════════ -->
+
+    <!-- ══════════ VISTA: PERSONAL ══════════ -->
+    <section class="view" id="view-personal" hidden>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.2rem;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <button id="btn-tab-empleados" class="tab-btn active" style="padding:7px 14px; background:var(--amber); color:#1a1208; font-weight:700; border:none; border-radius:8px; font-size:12px; cursor:pointer;">Empleados</button>
+          <button id="btn-tab-turnos" class="tab-btn" style="padding:7px 14px; background:var(--bg-secondary); border:0.5px solid var(--border-md); border-radius:8px; color:var(--text-secondary); font-size:12px; cursor:pointer;">Turnos</button>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <input type="date" id="turnos-fecha" style="padding:7px 10px; background:var(--bg-secondary); border:0.5px solid var(--border-md); border-radius:8px; color:var(--text-primary); font-size:13px; display:none;">
+          <button id="btn-nuevo-empleado" style="display:flex; align-items:center; gap:6px; padding:8px 16px; background:var(--amber); color:#1a1208; font-weight:700; font-size:13px; border:none; border-radius:8px; cursor:pointer;">
+            <i class="ti ti-plus"></i> Nuevo empleado
+          </button>
+          <button id="btn-nuevo-turno" style="display:none; align-items:center; gap:6px; padding:8px 16px; background:var(--amber); color:#1a1208; font-weight:700; font-size:13px; border:none; border-radius:8px; cursor:pointer;">
+            <i class="ti ti-plus"></i> Nuevo turno
+          </button>
+        </div>
+      </div>
+      <div class="card" style="padding:0; overflow:hidden;">
+        <div id="personal-lista" style="min-height:120px;"></div>
+      </div>
+      <div class="card" id="turnos-panel" style="padding:0; overflow:hidden; display:none;">
+        <div id="turnos-lista" style="min-height:120px;"></div>
+      </div>
+    </section>
+    <!-- ══════════ /VISTA: PERSONAL ══════════ -->
+
+  </main>
+</div>
+
+<script src="/js/auth.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>
