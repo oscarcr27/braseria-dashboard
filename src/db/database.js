@@ -7,7 +7,7 @@ const fs     = require('fs');
 const DB_PATH = path.join(__dirname, '../../data/braseria.db');
 fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 
-const db = new DatabaseSync(DB_PATH);
+const db = new Database(DB_PATH);
 
 db.exec(`PRAGMA journal_mode = WAL`);
 db.exec(`PRAGMA foreign_keys = ON`);
